@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   philo.h                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: utilisateur <utilisateur@student.42.fr>    +#+  +:+       +#+        */
+/*   By: nbaldes <nbaldes@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/02 14:51:11 by nbaldes           #+#    #+#             */
-/*   Updated: 2026/02/06 10:07:36 by utilisateur      ###   ########.fr       */
+/*   Updated: 2026/02/06 15:16:19 by nbaldes          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,32 +20,31 @@
 # include <sys/time.h>
 # include <unistd.h>
 
-typedef struct s_arg
+typedef struct s_rules
 {
-	int	nb_philo;
-	int	t_die;
-	int	t_eat;
-	int	t_sleep;
-	int	nb_meal;
-}		t_arg;
+	int				nb_philo;
+	int				time_to_die;
+	int				time_to_eat;
+	int				time_to_sleep;
+	int				nb_meal_max;
+	long long		start_time;
+	int				stop;
+	pthread_mutex_t	stop_mutex;
+	pthread_mutex_t	print_mutex;
+	pthread_mutex_t	*forks;
+}	t_rules;
 
 typedef struct s_philo
 {
-	pthread_mutex_t	left_fork;
-	pthread_mutex_t	how_fat_ru;
-
-}		t_philo;
-
-typedef struct s_glob
-{
-	pthread_mutex_t	death_mutex;
-	pthread_mutex_t print_mutex;
-	pthread_mutex_t	*fork;
-	t_philo			*philo;
-	t_arg			args;
-	int				someone_die;
-	long long		start_time;
-}		t_glob;
+	int				id;
+	int				nb_meal;
+	long long		timer_lmeal;
+	pthread_t		thread;
+	pthread_mutex_t	meal_mutex;
+	pthread_mutex_t	*left_fork;
+	pthread_mutex_t	*right_fork;
+	t_rules			*rules;
+}	t_philo;
 
 //utils
 
