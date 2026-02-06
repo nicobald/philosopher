@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   philo.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: nbaldes <nbaldes@student.42.fr>            +#+  +:+       +#+        */
+/*   By: utilisateur <utilisateur@student.42.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/02 14:51:16 by nbaldes           #+#    #+#             */
-/*   Updated: 2026/02/05 17:28:51 by nbaldes          ###   ########.fr       */
+/*   Updated: 2026/02/06 10:38:24 by utilisateur      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,28 +61,87 @@ long long	current_time_ms(void)
 	return (time_ms);
 }
 
-int	init_thread(int *thread, t_glob *glob, int philosopher(), int *philo)
+// int	init_thread(int *thread, t_glob *glob, int philosopher(), int *philo)
+// {
+// 	int	i;
+
+// 	while (i < glob->args.nb_philo)
+// 	{
+// 		pthread_create(&thread[i], NULL, philosopher, &glob->philo[i]);
+// 		i++;
+// 	}
+// 	return (0);
+// }
+
+int	init_forks(t_glob *glob)
 {
 	int	i;
 
+	glob->fork = malloc(sizeof(pthread_mutex_t) * glob->args.nb_philo);
+	if (!glob->fork)
+		return (0);
+	i = 0;
 	while (i < glob->args.nb_philo)
 	{
-		pthread_create(&thread[i], NULL, philosopher, &glob->philo[i]);
+		if (pthread_mutex_init(&glob->fork[i], NULL))
+		{
+			while (i > 0)
+			{
+				i--;
+				pthread_mutex_destroy(&glob->fork[i]);
+			}
+			free(glob->fork);
+			glob->fork = NULL;
+			return (0);
+		}
 		i++;
 	}
-	return (0);
+	return (1);
 }
 
 int	init_mutex(t_glob *glob)
 {
-	pthread_mutex_init(&glob->death_mutex, NULL);
+	if (pthread_mutex_init(&glob->death_mutex, NULL))
+		return (1);
+	if (pthread_mutex_init(&glob->print_mutex, NULL))
+	{
+		pthread_mutex_destroy(&glob->death_mutex);
+		return (1);
+	}
+	
 	return (0);
+}
+
+int	init_simulation(t_glob *glob, t_philo **philos)
+{
+	if (!init_mutexes(glob))
+		return (0);
+	if (!init_forks(glob))
+	{
+		pthread_mutex_destroy(&glob->print_mutex);
+		pthread_mutex_destroy(&glob->death_mutex);
+		return (0);
+	}
+	*philos = malloc(sizeof(t_philo) * glob->args.nb_philo);
+	if (!*philos)
+	{
+		cleanup_simulation(glob, NULL);
+		return (0);
+	}
+	if (!init_philosophers(glob, *philos))
+	{
+		free(*philos);
+		*philos = NULL;
+		cleanup_simulation(glob, NULL);
+		return (0);
+	}
+	return (1);
 }
 
 int	main(int argc, char **argv)
 {
-	int		thread[200];
-	int		*philo;
+	// int		thread[200];
+	// int		*philo;
 	t_glob	glob;
 
 	if (check_error(argc, argv))

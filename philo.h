@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   philo.h                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: nbaldes <nbaldes@student.42.fr>            +#+  +:+       +#+        */
+/*   By: utilisateur <utilisateur@student.42.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/02 14:51:11 by nbaldes           #+#    #+#             */
-/*   Updated: 2026/02/05 16:34:38 by nbaldes          ###   ########.fr       */
+/*   Updated: 2026/02/06 10:07:36 by utilisateur      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,6 +39,7 @@ typedef struct s_philo
 typedef struct s_glob
 {
 	pthread_mutex_t	death_mutex;
+	pthread_mutex_t print_mutex;
 	pthread_mutex_t	*fork;
 	t_philo			*philo;
 	t_arg			args;
