@@ -5,180 +5,106 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: nbaldes <nbaldes@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/10/02 14:51:16 by nbaldes           #+#    #+#             */
-/*   Updated: 2026/02/06 15:28:18 by nbaldes          ###   ########.fr       */
+/*   Created: 2026/02/11 12:33:22 by nbaldes           #+#    #+#             */
+/*   Updated: 2026/02/11 15:16:16 by nbaldes          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "philo.h"
 
-int	check_error(int argc, char **argv)
+void	eat(t_philo *philo)
 {
-	int		i;
-	int		j;
-
-	i = 2;
-	if (argc < 5 || argc > 6)
-		return (write(1, "invalid number of arg\n", 23));
-	if (ft_atoi(argv[2]) < 0 || ft_atoi(argv[3]) < 0 || ft_atoi(argv[4]) < 0)
-		return (printf("Error : time must be positive\n"));
-	while (argv[i])
-	{
-		j = 0;
-		while (argv[i][j])
-		{
-			if (argv[i][j] < '0' || argv[i][j] > '9')
-				return (printf("Error : wrong arg format\n"));
-			j++;
-		}
-		i++;
-	}
-	if (ft_atoi(argv[1]) <= 0 || ft_atoi(argv[1]) > 200)
-		return (printf("Error : invalid number of philosopher\n"));
-	return (0);
+	pthread_mutex_lock(&philo->meal_mutex);
+	philo->lmeal = now_ms();
+	philo->nb_meal += 1;
+	pthread_mutex_unlock(&philo->meal_mutex);
+	log_action(philo, "is eating");
+	msleep_precise(philo->rules->time_to_eat, philo->rules);
+	pthread_mutex_unlock(philo->left_fork);
+	if (philo->left_fork != philo->right_fork)
+		pthread_mutex_unlock(philo->right_fork);
 }
 
-long long	current_time_ms(void)
+void	sleep_and_think(t_philo *philo)
 {
-	struct timeval	tv;
-	long long		time_ms;
-
-	gettimeofday(&tv, NULL);
-	time_ms = (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
-	return (time_ms);
+	log_action(philo, "is sleeping");
+	msleep_precise(philo->rules->time_to_sleep, philo->rules);
+	log_action(philo, "is thinking");
+	if (philo->rules->nb_philo % 2 == 1)
+		msleep_precise(philo->rules->time_to_eat / 2, philo->rules);
 }
 
-int	init_mutexes(t_rules *rules)
-{
-	if (pthread_mutex_init(&rules->stop_mutex, NULL) != 0)
-		return (1);
-	if (pthread_mutex_init(&rules->print_mutex, NULL) != 0)
-	{
-		pthread_mutex_destroy(&rules->stop_mutex);
-		return (1);
-	}
-	return (0);
-}
-
-int	init_forks(t_rules *rules)
+int	all_fed(t_rules *rules, t_philo *philos)
 {
 	int	i;
 
-	rules->forks = malloc(sizeof(pthread_mutex_t) * rules->nb_philo);
-	if (!rules->forks)
-		return (1);
+	if (rules->nb_meal_max < 0)
+		return (0);
 	i = 0;
 	while (i < rules->nb_philo)
 	{
-		if (pthread_mutex_init(&rules->forks[i], NULL) != 0)
+		pthread_mutex_lock(&philos[i].meal_mutex);
+		if (philos[i].nb_meal < rules->nb_meal_max)
 		{
-			while (i > 0)
-			{
-				i--;
-				pthread_mutex_destroy(&rules->forks[i]);
-			}
-			free(rules->forks);
-			rules->forks = NULL;
-			return (1);
+			pthread_mutex_unlock(&philos[i].meal_mutex);
+			return (0);
 		}
+		pthread_mutex_unlock(&philos[i].meal_mutex);
 		i++;
 	}
-	return (0);
+	return (1);
 }
 
-int	init_philosophers(t_rules *rules, t_philo *philos)
+void	*monitor_routine(void *arg)
 {
-	int	i;
+	t_monitor_args	*d;
 
-	i = 0;
-	while (i < rules->nb_philo)
+	d = (t_monitor_args *)arg;
+	while (!get_stop(d->rules))
 	{
-		philos[i].id = i + 1;
-		philos[i].nb_meal = 0;
-		philos[i].timer_lmeal = 0;
-		philos[i].rules = rules;
-		philos[i].left_fork = &rules->forks[i];
-		philos[i].right_fork = &rules->forks[(i + 1) % rules->nb_philo];
-		if (pthread_mutex_init(&philos[i].meal_mutex, NULL) != 0)
+		d->i = -1;
+		while (++d->i < d->rules->nb_philo && !get_stop(d->rules))
 		{
-			while (i > 0)
+			pthread_mutex_lock(&d->philos[d->i].meal_mutex);
+			if (now_ms() - d->philos[d->i].lmeal >= d->rules->time_to_die)
 			{
-				i--;
-				pthread_mutex_destroy(&philos[i].meal_mutex);
+				log_death(&d->philos[d->i]);
+				pthread_mutex_unlock(&d->philos[d->i].meal_mutex);
+				return (NULL);
 			}
-			return (1);
+			pthread_mutex_unlock(&d->philos[d->i].meal_mutex);
 		}
-		i++;
-	}
-	return (0);
-}
-
-void	cleanup_simulation(t_rules *rules, t_philo *philos)
-{
-	int	i;
-
-	if (philos)
-	{
-		i = 0;
-		while (i < rules->nb_philo)
+		if (all_fed(d->rules, d->philos))
 		{
-			pthread_mutex_destroy(&philos[i].meal_mutex);
-			i++;
+			set_stop(d->rules, 1);
+			return (NULL);
 		}
-		free(philos);
+		usleep(100);
 	}
-	if (rules->forks)
-	{
-		i = 0;
-		while (i < rules->nb_philo)
-		{
-			pthread_mutex_destroy(&rules->forks[i]);
-			i++;
-		}
-		free(rules->forks);
-	}
-	pthread_mutex_destroy(&rules->print_mutex);
-	pthread_mutex_destroy(&rules->stop_mutex);
+	return (NULL);
 }
 
-int	init_simulation(t_rules *rules, t_philo **philos)
+void	*philo_routine(void *arg)
 {
-	if (init_mutexes(rules))
-		return (1);
-	if (init_forks(rules))
+	t_philo	*philo;
+
+	philo = (t_philo *)arg;
+	if (philo->rules->nb_philo == 1)
 	{
-		pthread_mutex_destroy(&rules->print_mutex);
-		pthread_mutex_destroy(&rules->stop_mutex);
-		return (1);
+		handle_single_philo(philo);
+		return (NULL);
 	}
-	*philos = malloc(sizeof(t_philo) * rules->nb_philo);
-	if (!*philos)
+	if (philo->id % 2 == 0)
+		usleep(philo->rules->time_to_eat * 500);
+	while (!get_stop(philo->rules))
 	{
-		cleanup_simulation(rules, NULL);
-		return (1);
+		lock_forks(philo);
+		if (philo->left_fork == philo->right_fork)
+			break ;
+		eat(philo);
+		if (get_stop(philo->rules))
+			break ;
+		sleep_and_think(philo);
 	}
-	if (init_philosophers(rules, *philos))
-	{
-		free(*philos);
-		*philos = NULL;
-		cleanup_simulation(rules, NULL);
-		return (1);
-	}
-	return (0);
+	return (NULL);
 }
-
-int	main(int argc, char **argv)
-{
-	t_rules	rules;
-	t_philo	*philos;
-
-	if (check_error(argc, argv))
-		return (1);
-	if (init_simulation(&rules, &philos))
-		return (printf("Error: initialization failed\n"));
-	// if (run_simulation())
-	// 	ft_putstr_fd("Error: simulation failed\n", 2);
-	cleanup_simulation(&rules, philos);
-	return (0);
-}
-

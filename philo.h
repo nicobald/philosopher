@@ -6,7 +6,7 @@
 /*   By: nbaldes <nbaldes@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/02 14:51:11 by nbaldes           #+#    #+#             */
-/*   Updated: 2026/02/06 15:16:19 by nbaldes          ###   ########.fr       */
+/*   Updated: 2026/02/11 15:17:22 by nbaldes          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,7 +38,7 @@ typedef struct s_philo
 {
 	int				id;
 	int				nb_meal;
-	long long		timer_lmeal;
+	long long		lmeal;
 	pthread_t		thread;
 	pthread_mutex_t	meal_mutex;
 	pthread_mutex_t	*left_fork;
@@ -46,9 +46,40 @@ typedef struct s_philo
 	t_rules			*rules;
 }	t_philo;
 
+typedef struct s_monitor_args
+{
+	int		i;
+	t_rules	*rules;
+	t_philo	*philos;
+}	t_monitor_args;
+
 //utils
+int			ft_atoi(const char *str);
+int			get_stop(t_rules *rules);
+void		set_stop(t_rules *rules, int value);
+void		msleep_precise(long long duration_ms, t_rules *rules);
+long long	now_ms(void);
 
-int	ft_atoi(const char *str);
+//parsing
+int			check_error(int argc, char **argv);
 
+//init
+int			init_simulation(t_rules *rules, t_philo **philos);
+
+//log
+void		log_action(t_philo *philo, const char *msg);
+void		log_death(t_philo *philo);
+void		handle_single_philo(t_philo *philo);
+void		lock_forks(t_philo *philo);
+
+//philo
+void		*philo_routine(void *arg);
+void		*monitor_routine(void *arg);
+
+//simulation
+int			run_simulation(t_rules *rules, t_philo *philos);
+
+//free
+void		cleanup_simulation(t_rules *rules, t_philo *philos);
 
 #endif

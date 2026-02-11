@@ -6,7 +6,7 @@
 #    By: nbaldes <nbaldes@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/10/02 14:51:25 by nbaldes           #+#    #+#              #
-#    Updated: 2026/02/02 16:00:42 by nbaldes          ###   ########.fr        #
+#    Updated: 2026/02/11 12:55:23 by nbaldes          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -15,8 +15,12 @@ CC = gcc
 CFLAGS = -Wall -Wextra -Werror -g3
 RM = rm -f
 
-SRC =	philo.c \
+SRC =	main.c \
+		parsing.c \
+		init.c \
 		utils.c \
+		philo.c \
+		log.c \
 
 OBJ = $(SRC:.c=.o)
 
