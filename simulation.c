@@ -6,91 +6,76 @@
 /*   By: nbaldes <nbaldes@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/11 15:09:51 by nbaldes           #+#    #+#             */
-/*   Updated: 2026/02/11 15:19:30 by nbaldes          ###   ########.fr       */
+/*   Updated: 2026/02/11 16:03:44 by nbaldes          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "philo.h"
 
-void	init_last_meal(t_rules *rules, t_philo *philos)
+void	init_lmeal(t_rules *rules, t_philo *philos)
 {
 	int	i;
 
-	i = 0;
-	while (i < rules->nb_philo)
+	i = -1;
+	while (++i < rules->nb_philo)
 	{
 		pthread_mutex_lock(&philos[i].meal_mutex);
 		philos[i].lmeal = rules->start_time;
 		pthread_mutex_unlock(&philos[i].meal_mutex);
-		i++;
 	}
 }
 
-int	create_philo_threads(t_rules *rules, t_philo *philos)
+int	create_threads_philo(t_rules *rules, t_philo *philos)
 {
 	int	i;
+	int	created;
 
-	i = 0;
-	while (i < rules->nb_philo)
+	created = 0;
+	i = -1;
+	while (++i < rules->nb_philo)
 	{
-		if (pthread_create(&philos[i].thread, NULL,
-				philo_routine, &philos[i]))
+		if (pthread_create(&philos[i].thread, NULL, philo_routine, &philos[i]))
 		{
 			set_stop(rules, 1);
 			break ;
 		}
-		i++;
+		created++;
 	}
-	return (i);
+	return (created);
 }
 
-void	join_created_threads(t_philo *philos, int created)
+void	join_thread(t_philo *philos, int nb_thread)
 {
 	int	i;
 
-	i = 0;
-	while (i < created)
-	{
+	i = -1;
+	while (++i < nb_thread)
 		pthread_join(philos[i].thread, NULL);
-		i++;
-	}
-}
-
-int	create_monitor(t_rules *rules,
-			t_philo *philos, pthread_t *monitor)
-{
-	t_monitor_args	args;
-
-	args.rules = rules;
-	args.philos = philos;
-	if (pthread_create(monitor, NULL,
-			monitor_routine, &args))
-	{
-		set_stop(rules, 1);
-		return (1);
-	}
-	return (0);
 }
 
 int	run_simulation(t_rules *rules, t_philo *philos)
 {
-	pthread_t	monitor;
-	int			created;
+	pthread_t		monitor;
+	t_monitor_args	args;
+	int				created;
 
 	rules->start_time = now_ms();
-	init_last_meal(rules, philos);
-	created = create_philo_threads(rules, philos);
+	init_lmeal(rules, philos);
+	created = create_threads_philo(rules, philos);
 	if (created != rules->nb_philo)
 	{
-		join_created_threads(philos, created);
+		join_thread(philos, created);
 		return (1);
 	}
-	if (create_monitor(rules, philos, &monitor))
+	args.rules = rules;
+	args.philos = philos;
+	if (pthread_create(&monitor, NULL, monitor_routine, &args))
 	{
-		join_created_threads(philos, rules->nb_philo);
+		set_stop(rules, 1);
+		join_thread(philos, rules->nb_philo);
 		return (1);
 	}
-	join_created_threads(philos, rules->nb_philo);
+	join_thread(philos, rules->nb_philo);
 	pthread_join(monitor, NULL);
 	return (0);
 }

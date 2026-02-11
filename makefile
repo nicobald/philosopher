@@ -6,7 +6,7 @@
 #    By: nbaldes <nbaldes@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/10/02 14:51:25 by nbaldes           #+#    #+#              #
-#    Updated: 2026/02/11 12:55:23 by nbaldes          ###   ########.fr        #
+#    Updated: 2026/02/11 15:27:53 by nbaldes          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -16,11 +16,11 @@ CFLAGS = -Wall -Wextra -Werror -g3
 RM = rm -f
 
 SRC =	main.c \
-		parsing.c \
 		init.c \
 		utils.c \
 		philo.c \
 		log.c \
+		simulation.c \
 
 OBJ = $(SRC:.c=.o)
 
